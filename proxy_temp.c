@@ -28,6 +28,21 @@ int inout(int in, int out)
 return 0;
 }
 
+int checkvalidity(char * s)
+{
+
+}
+/* isvalidip() - Uses the inet_pton() function to check whether or not 
+ * the specified IP address is valid. Returns TRUE if valid and FALSE
+ * otherwise.
+ */
+int isvalidip(char *ip)
+{
+    struct sockaddr_in sa;
+    int valid = inet_pton(AF_INET, ip, &(sa.sin_addr));
+    return valid != 0;
+}
+
 int main(int argc, char *argv[])
 {
 	int proxyPort;
@@ -42,8 +57,9 @@ int main(int argc, char *argv[])
 	hints.ai_socktype = SOCK_STREAM;
 	char recvBuf_proxyAsServer[1025];
 	char getRequest[1025];
+	char *ptr; 						//temporary variable
 	int i=0,j=0;
-	char ipaddr[20];
+	char ipaddr[20],path[100],*host;
 	if(argc != 2)
 	{
 		fprintf(stderr, "Usage:./proxy [port]\n" );
@@ -80,6 +96,38 @@ int main(int argc, char *argv[])
      	}
      	(ipaddr)[j]='\0';
      	printf("%s\n", ipaddr);
+
+
+     	if ( isvalidip(ipaddr) ) 
+     	{ 													// when an IP is found then no paths are specified
+     	    //printf("2%s\n",ipaddr );
+     		sprintf(getRequest, "GET / HTTP/1.0\nHOST: %s\n\n", ipaddr); // create a get request only for the IP
+     	} 
+     	else 
+     	{ 														// if it's not an IP, then it should be a DNS name
+     		if ( (ptr = strstr(ipaddr, "/")) == NULL) 
+     		{ 													// if the DNS name does not contain a slash at the end
+     			//printf("3%s\n",ipaddr );
+     			sprintf(getRequest, "GET / HTTP/1.0\nHOST: %s\n\n", ipaddr); // we send a request only for the dns name
+     		}
+     		else
+     		{  													// it there is a slash right after the DNS name then there is path to a filename
+     			strcpy(path, ptr);
+     	        host = strtok(ipaddr, "/"); //truncate the argument to a PATH and DNS name
+     			sprintf(getRequest, "GET %s HTTP/1.0\nHOST: %s\n\n", path, ipaddr);
+     			//printf("4%s %s\n",ipaddr,path );
+     		}
+     	}     	
+
+
+
+     	// checks if the 'http://' (or 'https://') protocol is specified
+     	// if one of them is specified it is ignored them and makes the URL points to 'www.'
+     	// this was done because getaddrinfo() returns an error when 'http://' is passed to it
+     	/*if ( (ptr = strstr(ipaddr, "http://")) != NULL || (ptr = strstr(ipaddr, "https://")) != NULL ) {
+     		*ipaddr = *ipaddr + 7; //ignoring 'http://'
+     	}*/
+     	//printf("%s\n", ipaddr);
      	//End of Server Code
 
      	//Client Code Starts
@@ -97,18 +145,24 @@ int main(int argc, char *argv[])
      	*/
      	getaddrinfo(ipaddr, "80", &hints, &res);
      	sdProxyAsClient= socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-     	printf("1" );
+     	//printf("1" );
      	bind(sdProxyAsClient, res->ai_addr, res->ai_addrlen);
-     	printf("2" );
+     	//printf("2" );
      	connect(sdProxyAsClient, res->ai_addr, res->ai_addrlen);
-     	printf("3" );
-     	sprintf(getRequest, "GET / HTTP/1.0\nHOST: %s\n\n", ipaddr);
-     	printf("4" );
+     	//printf("3" );
+     	//sprintf(getRequest, "GET / HTTP/1.0\nHOST: %s\n\n", ipaddr);
+
+     	
+
+
+
+
+     	//printf("4" );
      	optval = 1; //is 
         setsockopt(sdProxyAsClient, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
-        printf("5" );
+        //printf("5" );
         write(sdProxyAsClient, getRequest, strlen(getRequest));
-        printf("6" );
+        //("6" );
         while(inout(sdProxyAsClient,newsdProxyAsServer) > 0);
 
 
