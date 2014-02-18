@@ -63,7 +63,7 @@ bool isvalidip(char *ip)
  */
 int send_request(char *dns, char *port){
 
-	int sockfd, bindfd; // socket and bind file descriptors
+	int sockfd, bindfd;					 // socket and bind file descriptors
         char *ptr, *host, path[100];
 	char getrequest[1024];
         struct addrinfo hints, *res;
@@ -71,18 +71,22 @@ int send_request(char *dns, char *port){
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-
+		printf("1%s\n",dns );
 	// conditions to differentiate between an IP address and a hostname
-        if ( isvalidip(dns) ) { // when an IP is found then no paths are specified
+        if ( isvalidip(dns) ) 
+        { // when an IP is found then no paths are specified
+        	printf("2%s\n",dns );
 		sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\n\n", dns); // create a get request only for the IP
         } else { // if it's not an IP, then it should be a DNS name
 		if ( (ptr = strstr(dns, "/")) == NULL) { // if the DNS name does not contain a slash at the end
+			printf("3%s\n",dns );
 			 sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\n\n", dns); // we send a request only for the dns name
 			}
 		else {  // it there is a slash right after the DNS name then there is path to a filename
 			strcpy(path, ptr);
         		host = strtok(dns, "/"); //truncate the argument to a PATH and DNS name
 			sprintf(getrequest, "GET %s HTTP/1.0\nHOST: %s\n\n", path, dns);
+			printf("4%s %s\n",dns,path );
 		}
 	}
 	// gets linked list of results of a specified hostname

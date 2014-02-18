@@ -57,8 +57,9 @@ int main(int argc, char *argv[])
 	hints.ai_socktype = SOCK_STREAM;
 	char recvBuf_proxyAsServer[1025];
 	char getRequest[1025];
-	char *ptr; 						//temporary variable
-	int i=0,j=0;
+	char *ptr,temp[50]; 						//temporary variable
+    char method[10],protocolversion[10];
+	int i=0,j=0,k=0,k1=0,k2;
 	char ipaddr[20],path[100],*host;
 	if(argc != 2)
 	{
@@ -86,8 +87,24 @@ int main(int argc, char *argv[])
 		
 		i=0;
 		j=0;		
+        k=0;
+     	k1=0;
+        k2=0;
+        for (i = 0; recvBuf_proxyAsServer[i] != ' '; ++i)
+        {
+            /* code */
+            method[i] = recvBuf_proxyAsServer[i];
+        }
 
-     	
+        printf("0%s\n", method);
+
+        if(strcmp(method,"GET") )       //Other than get method we need to send bad request
+        {
+            strcpy(getRequest,"Error 501: Not Implemented\n");
+            write(newsdProxyAsServer, getRequest, strlen(getRequest));
+            return 0;
+        }
+
      	for (i = 4; recvBuf_proxyAsServer[i]!=' '; ++i)			//Parsing ipaddress
      	{
      		/* code */
@@ -95,30 +112,77 @@ int main(int argc, char *argv[])
      		j++;
      	}
      	(ipaddr)[j]='\0';
-     	printf("%s\n", ipaddr);
+     	printf("1%s\n", ipaddr);
+
+        strcpy(temp,ipaddr);
+        if ( (ptr = strstr(ipaddr, "http://")) != NULL || (ptr = strstr(ipaddr, "https://")) != NULL ) {
+           for (i = 7; i < strlen(ipaddr); ++i)
+            {
+                
+                ipaddr[k1]=temp[i];
+                k1++;
+            }                                //ignoring 'http://'
+            ipaddr[k1]='\0';
+        }
+
+        printf("2%s\n", ipaddr);
+        for (i = 4+j+1; recvBuf_proxyAsServer[i]!='\r'; ++i)
+        {
+            /* code */
+            protocolversion[k] = recvBuf_proxyAsServer[i];
+            k++;
+        }
+        
+        protocolversion[k]='\0';
+
+        printf("3%s\n", protocolversion);
 
 
-     	if ( isvalidip(ipaddr) ) 
-     	{ 													// when an IP is found then no paths are specified
-     	    //printf("2%s\n",ipaddr );
-     		sprintf(getRequest, "GET / HTTP/1.0\nHOST: %s\n\n", ipaddr); // create a get request only for the IP
-     	} 
-     	else 
-     	{ 														// if it's not an IP, then it should be a DNS name
-     		if ( (ptr = strstr(ipaddr, "/")) == NULL) 
-     		{ 													// if the DNS name does not contain a slash at the end
-     			//printf("3%s\n",ipaddr );
-     			sprintf(getRequest, "GET / HTTP/1.0\nHOST: %s\n\n", ipaddr); // we send a request only for the dns name
-     		}
-     		else
-     		{  													// it there is a slash right after the DNS name then there is path to a filename
-     			strcpy(path, ptr);
-     	        host = strtok(ipaddr, "/"); //truncate the argument to a PATH and DNS name
-     			sprintf(getRequest, "GET %s HTTP/1.0\nHOST: %s\n\n", path, ipaddr);
-     			//printf("4%s %s\n",ipaddr,path );
-     		}
-     	}     	
 
+        if(strcmp(protocolversion,"HTTP/1.0"))
+        {
+            strcpy(getRequest,"Error 400: Bad Request\n");
+            write(newsdProxyAsServer, getRequest, strlen(getRequest));
+            return 0;
+        }
+        //printf("%s\n", ipaddr);
+        /*strcpy(temp,ipaddr); //flop
+        if(temp[0] == '/')
+        {
+            printf("1\n");
+           // strcpy(path,ipaddr);
+            printf("%s\n", recvBuf_proxyAsServer);
+            sscanf(recvBuf_proxyAsServer, "%s %s %s\r\nHOST: %s\r\n\n",method,path,protocolversion,ipaddr);
+            printf("2%s\n", method);
+           printf("3%s\n", path);
+           printf("4%s\n", protocolversion);
+           printf("5%s\n", ipaddr);
+            sprintf(getRequest, "GET %s HTTP/1.0\nHOST: %s\n\n", path, ipaddr);
+        }
+*/
+        else
+        {
+         	if ( isvalidip(ipaddr) ) 
+         	{ 													// when an IP is found then no paths are specified
+         	    //printf("2%s\n",ipaddr );
+         		sprintf(getRequest, "GET / HTTP/1.0\nHOST: %s\n\n", ipaddr); // create a get request only for the IP
+         	} 
+         	else 
+         	{ 														// if it's not an IP, then it should be a DNS name
+         		if ( (ptr = strstr(ipaddr, "/")) == NULL) 
+         		{ 													// if the DNS name does not contain a slash at the end
+         			//printf("3%s\n",ipaddr );
+         			sprintf(getRequest, "GET / HTTP/1.0\nHOST: %s\n\n", ipaddr); // we send a request only for the dns name
+         		}
+         		else
+         		{  													// it there is a slash right after the DNS name then there is path to a filename
+         			strcpy(path, ptr);
+         	        host = strtok(ipaddr, "/"); //truncate the argument to a PATH and DNS name
+         			sprintf(getRequest, "GET %s HTTP/1.0\nHOST: %s\n\n", path, ipaddr);
+         			//printf("4%s %s\n",ipaddr,path );
+         		}
+         	}     	
+        }
 
 
      	// checks if the 'http://' (or 'https://') protocol is specified
